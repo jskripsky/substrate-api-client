@@ -22,21 +22,21 @@ primitive-types = { version = "0.2", default-features = false, features = ["code
 clap = { version = "2.33", features = ["yaml"] }
 #twox-hash = "1.1.0"
 
-primitives = { package = "substrate-primitives", git = "https://github.com/paritytech/substrate.git" }
-node-primitives = { git = "https://github.com/paritytech/substrate.git" }
-runtime_io = { package = "sr-io", git = "https://github.com/paritytech/substrate.git" }
-runtime_primitives = { package = "sr-primitives", git = "https://github.com/paritytech/substrate.git", default-features = false }
-inherents = { package = "substrate-inherents", git = "https://github.com/paritytech/substrate.git", default-features = false }
-transaction_pool = { package = "substrate-transaction-pool", git = "https://github.com/paritytech/substrate.git" }
-metadata = { package = "srml-metadata", git = "https://github.com/paritytech/substrate.git" }
-balances = { package = "srml-balances", git = "https://github.com/paritytech/substrate.git" }
-keyring = { package = "substrate-keyring", git = "https://github.com/paritytech/substrate.git" }
-system = { package = "srml-system", git = "https://github.com/paritytech/substrate.git" }
+primitives = { package = "substrate-primitives", git = "https://github.com/paritytech/substrate.git", rev = '563e7876d72266ef62b18184f06264a6a89e8c0c' }
+node-primitives = { git = "https://github.com/paritytech/substrate.git", rev = '563e7876d72266ef62b18184f06264a6a89e8c0c'  }
+runtime_io = { package = "sr-io", git = "https://github.com/paritytech/substrate.git", rev = '563e7876d72266ef62b18184f06264a6a89e8c0c'  }
+runtime_primitives = { package = "sr-primitives", git = "https://github.com/paritytech/substrate.git", rev = '563e7876d72266ef62b18184f06264a6a89e8c0c', default-features = false }
+inherents = { package = "substrate-inherents", git = "https://github.com/paritytech/substrate.git", rev = '563e7876d72266ef62b18184f06264a6a89e8c0c', default-features = false }
+transaction_pool = { package = "substrate-transaction-pool", git = "https://github.com/paritytech/substrate.git", rev = '563e7876d72266ef62b18184f06264a6a89e8c0c'  }
+metadata = { package = "srml-metadata", git = "https://github.com/paritytech/substrate.git", rev = '563e7876d72266ef62b18184f06264a6a89e8c0c'  }
+balances = { package = "srml-balances", git = "https://github.com/paritytech/substrate.git", rev = '563e7876d72266ef62b18184f06264a6a89e8c0c'  }
+keyring = { package = "substrate-keyring", git = "https://github.com/paritytech/substrate.git", rev = '563e7876d72266ef62b18184f06264a6a89e8c0c' }
+system = { package = "srml-system", git = "https://github.com/paritytech/substrate.git", rev = '563e7876d72266ef62b18184f06264a6a89e8c0c' }
 #test_client = { package = "substrate-test-client", git = "https://github.com/paritytech/substrate.git" }
 
 #node-runtime = { git = "https://github.com/paritytech/substrate.git" }
 node-runtime = { package = "substratee-node-runtime", git = "https://github.com/scs/substraTEE-node.git" }
-
+#
 [features]
 default = ["std"]
 std = [
