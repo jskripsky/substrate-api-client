@@ -34,8 +34,8 @@ keyring = { package = "substrate-keyring", git = "https://github.com/paritytech/
 system = { package = "srml-system", git = "https://github.com/paritytech/substrate.git" }
 #test_client = { package = "substrate-test-client", git = "https://github.com/paritytech/substrate.git" }
 
-node-runtime = { git = "https://github.com/paritytech/substrate.git" }
-#node-runtime = { package = "substratee-node-runtime", git = "https://github.com/scs/substraTEE-node.git" }
+#node-runtime = { git = "https://github.com/paritytech/substrate.git" }
+node-runtime = { package = "substratee-node-runtime", git = "https://github.com/scs/substraTEE-node.git" }
 
 [features]
 default = ["std"]
