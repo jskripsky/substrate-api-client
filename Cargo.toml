@@ -32,7 +32,7 @@ balances = { package = "srml-balances",git = "https://github.com/brenzi/substrat
 keyring = { package = "substrate-keyring",git = "https://github.com/brenzi/substrate.git", branch="global-allocator-feature" }
 system = { package = "srml-system", git = "https://github.com/brenzi/substrate.git", branch="global-allocator-feature" }
 
-node-runtime = { git = "https://github.com/brenzi/substrate.git", branch="global-allocator-feature" }
+my_node_runtime = { package = "substratee-node-runtime", git = "https://github.com/scs/substraTEE-node.git", default-features = false, features=["no_global_allocator"], branch="marcel-ed25519" }
 
 [features]
 default = ["std"]
