@@ -40,5 +40,5 @@ std = [
 	"primitives/std",
 	"parity-codec/std",
     "runtime_primitives/std",
-	"node-runtime/std",
+	"my_node_runtime/std",
 ]

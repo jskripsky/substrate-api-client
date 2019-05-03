@@ -25,7 +25,7 @@ use serde_json::{json};
 use ws::{connect, Handler, Sender, Handshake, Result, Message, CloseCode};
 
 pub mod extrinsic;
-use node_runtime::{UncheckedExtrinsic}; //, Event};
+use my_node_runtime::{UncheckedExtrinsic}; //, Event};
 
 // #[macro_use]
 use hex;
@@ -189,7 +189,7 @@ impl Api {
         Ok(result_out.recv().unwrap())
     }
 
-    pub fn subscribe_events(&self, sender: ThreadOut<node_runtime::Event>) {
+    pub fn subscribe_events(&self, sender: ThreadOut<my_node_runtime::Event>) {
         println!("subscribing to events");
         let key = storage_key_hash("System", "Events", None);
         let jsonreq = json!({
@@ -221,7 +221,7 @@ impl Api {
             let _unhex = hexstr_to_vec(res);
             let mut _er_enc = _unhex.as_slice();
             //let _event = balances::RawEvent::decode(&mut _er_enc2);
-            let _events = Vec::<system::EventRecord::<node_runtime::Event>>::decode(&mut _er_enc);
+            let _events = Vec::<system::EventRecord::<my_node_runtime::Event>>::decode(&mut _er_enc);
             match _events {
                 Some(evts) => {
                     for ev in &evts {
