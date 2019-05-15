@@ -27,8 +27,7 @@ use serde_json::{json};
 
 use parity_codec::Decode;
 use node_primitives::Hash;
-use primitives::twox_128;
-use primitives::blake2_256;
+use primitives::{twox_128, blake2_256};
 use primitive_types::U256;
 
 use metadata::{RuntimeMetadata, RuntimeMetadataPrefixed};
@@ -48,16 +47,16 @@ struct JsonBasic {
 
 #[derive(Debug)]
 pub struct Api {
-    url : String,
+    url : &str,
     pub genesis_hash : Option<Hash>,
     //pub metadata : Option<RuntimeMetadataV4>,
 }
 
 impl Api {
-    pub fn new(url: String) -> Api {
+    pub fn new(url: &str) -> Api {
         Api {
-            url : url,
-            genesis_hash : None,
+            url: url,
+            genesis_hash: None,
 //            metadata : None,
         }
     }
@@ -356,46 +355,35 @@ impl Handler for ExtrinsicHandler {
     }
 }
 
-pub fn storage_key_hash(module: &str, storage_key_name: &str, param: Option<Vec<u8>>) -> String {
-        let mut key = module.as_bytes().to_vec();
-        key.append(&mut vec!(' ' as u8));
-        key.append(&mut storage_key_name.as_bytes().to_vec());
-        let mut keyhash;
+pub fn storage_key_hash(module: &str, storage_key_name: &str, param: Option<&str>) -> String {
+    let key = format!("{} {}", module, storage_key_name);
+    let mut hash = hex::encode(
         match param {
-            Some(par) => {
-                key.append(&mut par.clone());
-                keyhash = hex::encode(blake2_256(&key));
-                },
-            _ => {
-                keyhash = hex::encode(twox_128(&key));
-                },
+            Some(par) => blake2_256(&format!("{}{}", key, par));
+            _ => twox_128(&key);
         }
-        keyhash.insert_str(0, "0x");
-        keyhash
+    );
+    hash.insert_str(0, "0x");
+    hash
 }
 
-pub fn hexstr_to_vec(hexstr: String) -> Vec<u8> {
-    let mut _hexstr = hexstr.clone();
-    if _hexstr.starts_with("0x") {
-        _hexstr.remove(0);
-        _hexstr.remove(0);
+pub fn hexstr_to_vec(hexstr: &str) -> Vec<u8> {
+    if hexstr.starts_with("0x") {
+        hexstr = &hexstr[2..];
+    } else {
+        info!("converting non-prefixed hex string");
     }
-    else {
-        info!("converting non-prefixed hex string")
-    }
-    hex::decode(&_hexstr).unwrap()
+    hex::decode(hexstr).unwrap()
 }
 
-pub fn hexstr_to_u256(hexstr: String) -> U256 {
-    let _unhex = hexstr_to_vec(hexstr);
-    U256::from_little_endian(&mut &_unhex[..])
+pub fn hexstr_to_u256(hexstr: &str) -> U256 {
+    let bytes = hexstr_to_vec(hexstr);
+    U256::from_little_endian(&bytes)
 }
 
-pub fn hexstr_to_hash(hexstr: String) -> Hash {
-    let _unhex = hexstr_to_vec(hexstr);
-    let mut gh: [u8; 32] = Default::default();
-    gh.copy_from_slice(&_unhex);
-    Hash::from(gh)
+pub fn hexstr_to_hash(hexstr: &str) -> Hash {
+    let bytes = hexstr_to_vec(hexstr);
+    Hash::from(&bytes)
 }
 
 
