@@ -32,24 +32,15 @@ use primitive_types::U256;
 
 use metadata::{RuntimeMetadata, RuntimeMetadataPrefixed};
 
-use std::sync::mpsc::Sender as ThreadOut;
-use std::sync::mpsc::channel;
+use std::sync::mpsc::{Sender as ThreadOut, channel};
 use std::thread;
 
 const REQUEST_TRANSFER: u32         = 3;
 
-#[derive(Serialize, Deserialize, Debug)]
-struct JsonBasic {
-    jsonrpc: String,
-    method: String,
-    params: String,
-}
-
 #[derive(Debug)]
 pub struct Api {
-    url : &str,
-    pub genesis_hash : Option<Hash>,
-    //pub metadata : Option<RuntimeMetadataV4>,
+    url: &str,
+    pub genesis_hash: Option<Hash>,
 }
 
 impl Api {
@@ -57,7 +48,6 @@ impl Api {
         Api {
             url: url,
             genesis_hash: None,
-//            metadata : None,
         }
     }
 
@@ -94,47 +84,20 @@ impl Api {
             },
             _ => panic!("unsupported metadata"),
         }
-
-
-/*                    match value.modules {
-                        DecodeDifferent::Decoded(mods) => {
-                            modules = mods;
-                            println!("module0 {:?}", modules[0]);
-                        },
-                        _ => panic!("unsupported metadata"),
-                    }
-
-            println!("-------------------- modules ----------------");
-            for module in modules {
-                println!("module: {:?}", module.name);
-                match module.name {
-                    DecodeDifferent::Decoded(name) => {
-                        match module.calls {
-                            Some(DecodeDifferent::Decoded(calls)) => {
-                                println!("calls: {:?}", calls);
-                            },
-                            _ => println!("ignoring"),
-                        }
-                        println!("storage: {:?}", module.storage)
-                    },
-                    _ => println!("ignoring"),
-                }
-            }
-            */
     }
 
     // low level access
     pub fn get_request(&self, jsonreq: String) -> Result<String> {
         let (result_in, result_out) = channel();
-        let _url = self.url.clone();
         let _client = thread::Builder::new()
             .name("client".to_owned())
             .spawn(move || {
-                connect(_url, |out| {
-                    Getter {
+                connect(url, |out| {
+                    GenericHandler {
                         out: out,
                         request: jsonreq.clone(),
                         result: result_in.clone(),
+                        processor: &getter
                     }
                 }).unwrap()
             })
@@ -172,10 +135,11 @@ impl Api {
             .name("client".to_owned())
             .spawn(move || {
                 connect(_url, |out| {
-                    ExtrinsicHandler {
+                    GenericHandler {
                         out: out,
                         request: jsonreq.clone(),
                         result: result_in.clone(),
+                        processor: &extrinsicHandler
                     }
                 }).unwrap()
             })
@@ -199,10 +163,11 @@ impl Api {
             .name("client".to_owned())
             .spawn(move || {
                 connect(_url, |out| {
-                    SubscriptionHandler {
+                    GenericHandler {
                         out: out,
                         request: jsonreq.clone(),
                         result: result_in.clone(),
+                        processor: &subscriptionHandler
                     }
                 }).unwrap()
             })
@@ -211,37 +176,19 @@ impl Api {
         loop {
             let res = result_out.recv().unwrap();
             sender.send(res.clone()).unwrap();
-
-/*
-            //println!("client >>>> got {}", res);
-            let _unhex = hexstr_to_vec(res);
-            let mut _er_enc = _unhex.as_slice();
-            //let _event = balances::RawEvent::decode(&mut _er_enc2);
-            let _events = Vec::<system::EventRecord::<node_runtime::Event>>::decode(&mut _er_enc);
-            match _events {
-                Some(evts) => {
-                    for ev in &evts {
-                        println!("decoded: phase {:?} event {:?}", ev.phase, ev.event);
-                        sender.send(ev.event.clone()).unwrap();
-                    }
-                }
-                None => println!("couldn't decode event record list")
-            }
-            //self.result.send(_events).unwrap();
-*/
         }
     }
 }
 
-struct Getter {
+struct GenericHandler<T> {
     out: Sender,
     request: String,
-    result: ThreadOut<String>,
+    result: ThreadOut<T>,
+    processor: Fn(&mut self, serde_json::Value) -> Result<()>
 }
 
-impl Handler for Getter {
+impl Handler for GenericHandler {
     fn on_open(&mut self, _: Handshake) -> Result<()> {
-
         info!("sending request: {}", self.request);
         self.out.send(self.request.clone()).unwrap();
         Ok(())
@@ -251,108 +198,74 @@ impl Handler for Getter {
         debug!("{}", msg);
         let retstr = msg.as_text().unwrap();
         let value: serde_json::Value = serde_json::from_str(retstr).unwrap();
-
-        // FIXME: defaulting zo zero can be problematic. better to use Option<String>
-        let hexstr = match value["result"].as_str() {
-                        Some(res) => res.to_string(),
-                        _ => "0x00".to_string(),
-        };
-        self.result.send(hexstr).unwrap();
-        self.out.close(CloseCode::Normal).unwrap();
-        Ok(())
+        self.processor(value)
     }
 }
 
-struct SubscriptionHandler {
-    out: Sender,
-    request: String,
-    result: ThreadOut<String>,
+fn getter (&mut self: GenericHandler<String>, value: serde_json::Value) -> Result<()> {
+    let hexstr = match value["result"].as_str() {
+        Some(res) => res.to_string(),
+        _ => "0x00".to_string(),
+    }
+    self.result.send(hexstr).unwrap();
+    self.out.close(CloseCode::Normal).unwrap();
+    Ok(())
+)
+
+fn subscriptionHandler (&mut self: GenericHandler<String>, value: serde_json::Value) -> Result<()> {
+    match value["id"].as_str() {
+        Some(_idstr) => { },
+        _ => {
+            // subscriptions
+            debug!("no id field found in response. must be subscription");
+            debug!("method: {:?}", value["method"].as_str());
+            match value["method"].as_str() {
+                Some("state_storage") => {
+                    let _changes = &value["params"]["result"]["changes"];
+                    let _res_str = _changes[0][1].as_str().unwrap().to_string();
+                    self.result.send(_res_str).unwrap();
+                }
+                _ => error!("unsupported method"),
+            }
+        },
+    }
+    Ok(())
 }
 
-impl Handler for SubscriptionHandler {
-    fn on_open(&mut self, _: Handshake) -> Result<()> {
-
-        info!("sending request: {}", self.request);
-        self.out.send(self.request.clone()).unwrap();
-        Ok(())
-    }
-    fn on_message(&mut self, msg: Message) -> Result<()> {
-        info!("got message");
-        debug!("{}", msg);
-        let retstr = msg.as_text().unwrap();
-        let value: serde_json::Value = serde_json::from_str(retstr).unwrap();
-        match value["id"].as_str() {
-            Some(_idstr) => { },
-            _ => {
-                // subscriptions
-                debug!("no id field found in response. must be subscription");
-                debug!("method: {:?}", value["method"].as_str());
-                match value["method"].as_str() {
-                    Some("state_storage") => {
-                        let _changes = &value["params"]["result"]["changes"];
-                        let _res_str = _changes[0][1].as_str().unwrap().to_string();
-                        self.result.send(_res_str).unwrap();
-                    }
-                    _ => error!("unsupported method"),
+fn extrinsicHandler (&mut self: GenericHandler<Hash>, value: serde_json::Value) -> Result<()> {
+    match value["id"].as_str() {
+        Some(idstr) => { match idstr.parse::<u32>() {
+            Ok(REQUEST_TRANSFER) => {
+                match value.get("error") {
+                    Some(err) => error!("ERROR: {:?}", err),
+                    _ => debug!("no error"),
                 }
             },
-        };
-        Ok(())
-    }
-}
-
-struct ExtrinsicHandler {
-    out: Sender,
-    request: String,
-    result: ThreadOut<Hash>,
-}
-
-impl Handler for ExtrinsicHandler {
-    fn on_open(&mut self, _: Handshake) -> Result<()> {
-        info!("sending request: {}", self.request);
-        self.out.send(self.request.clone()).unwrap();
-        Ok(())
-    }
-
-    fn on_message(&mut self, msg: Message) -> Result<()> {
-        info!("got message");
-        debug!("{}", msg);
-        let retstr = msg.as_text().unwrap();
-        let value: serde_json::Value = serde_json::from_str(retstr).unwrap();
-        match value["id"].as_str() {
-            Some(idstr) => { match idstr.parse::<u32>() {
-                Ok(REQUEST_TRANSFER) => {
-                    match value.get("error") {
-                        Some(err) => error!("ERROR: {:?}", err),
-                        _ => debug!("no error"),
+            Ok(_) => debug!("unknown request id"),
+            Err(_) => error!("error assigning request id"),
+        }},
+        _ => {
+            // subscriptions
+            debug!("no id field found in response. must be subscription");
+            debug!("method: {:?}", value["method"].as_str());
+            match value["method"].as_str() {
+                Some("author_extrinsicUpdate") => {
+                    match value["params"]["result"].as_str() {
+                        Some(res) => debug!("author_extrinsicUpdate: {}", res),
+                        _ => {
+                            debug!("author_extrinsicUpdate: finalized: {}", value["params"]["result"]["finalized"].as_str().unwrap());
+                            // return result to calling thread
+                            self.result.send(hexstr_to_hash(value["params"]["result"]["finalized"].as_str().unwrap().to_string())).unwrap();
+                            // we've reached the end of the flow. return
+                            self.out.close(CloseCode::Normal).unwrap();
+                        },
                     }
-                },
-                Ok(_) => debug!("unknown request id"),
-                Err(_) => error!("error assigning request id"),
-            }},
-            _ => {
-                // subscriptions
-                debug!("no id field found in response. must be subscription");
-                debug!("method: {:?}", value["method"].as_str());
-                match value["method"].as_str() {
-                    Some("author_extrinsicUpdate") => {
-                        match value["params"]["result"].as_str() {
-                            Some(res) => debug!("author_extrinsicUpdate: {}", res),
-                            _ => {
-                                debug!("author_extrinsicUpdate: finalized: {}", value["params"]["result"]["finalized"].as_str().unwrap());
-                                // return result to calling thread
-                                self.result.send(hexstr_to_hash(value["params"]["result"]["finalized"].as_str().unwrap().to_string())).unwrap();
-                                // we've reached the end of the flow. return
-                                self.out.close(CloseCode::Normal).unwrap();
-                            },
-                        }
-                    }
-                    _ => error!("unsupported method"),
                 }
-            },
-        };
-        Ok(())
+                _ => error!("unsupported method"),
+            }
+        },
     }
+    Ok(())
 }
 
 pub fn storage_key_hash(module: &str, storage_key_name: &str, param: Option<&str>) -> String {
@@ -385,6 +298,3 @@ pub fn hexstr_to_hash(hexstr: &str) -> Hash {
     let bytes = hexstr_to_vec(hexstr);
     Hash::from(&bytes)
 }
-
-
-
