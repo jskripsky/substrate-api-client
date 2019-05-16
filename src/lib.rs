@@ -184,7 +184,7 @@ struct GenericHandler<T> {
     out: Sender,
     request: String,
     result: ThreadOut<T>,
-    processor: Fn(&mut self, serde_json::Value) -> Result<()>
+    processor: FnMut(&mut self, serde_json::Value) -> Result<()>
 }
 
 impl Handler for GenericHandler {
