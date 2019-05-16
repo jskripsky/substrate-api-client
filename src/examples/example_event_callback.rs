@@ -33,7 +33,7 @@ use std::thread;
 fn main() {
     env_logger::init();
 
-    let mut api = Api::new("ws://127.0.0.1:9944".to_string());
+    let mut api = Api::new("ws://127.0.0.1:9944");
     api.init();
 
     let (events_in, events_out) = channel();
