@@ -71,12 +71,11 @@ impl Api {
             "id": "1",
         });
         let metadata_str = self.get_request(jsonreq.to_string()).unwrap();
-        let _unhex = hexstr_to_vec(metadata_str);
-        let mut _om = _unhex.as_slice();
-        let _meta = RuntimeMetadataPrefixed::decode(&mut _om)
+        let mut _unhex = hexstr_to_vec(metadata_str);
+        let (_, _meta) = RuntimeMetadataPrefixed::decode(&mut _unhex)
                 .expect("runtime metadata decoding to RuntimeMetadataPrefixed failed.");
         debug!("decoded: {:?} ", _meta);
-        match _meta.1 {
+        match _meta {
             RuntimeMetadata::V4(_value) => {
                 //FIXME: storing metadata in self is problematic because it can't be cloned or synced among threads
                 //self.metadata = Some(value);
